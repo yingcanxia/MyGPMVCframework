@@ -3,10 +3,12 @@ package cn.shadow.mvcframework.v1.servlet;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -22,6 +24,7 @@ import javax.servlet.http.HttpServletResponse;
 import cn.shadow.mvcframework.v1.annotation.MyAutowired;
 import cn.shadow.mvcframework.v1.annotation.MyController;
 import cn.shadow.mvcframework.v1.annotation.MyRequestMapping;
+import cn.shadow.mvcframework.v1.annotation.MyRequestParam;
 import cn.shadow.mvcframework.v1.annotation.MyService;
 
 public class MyDispatchServlet extends HttpServlet{
@@ -53,22 +56,67 @@ public class MyDispatchServlet extends HttpServlet{
 	private void doDispatch(HttpServletRequest req, HttpServletResponse resp)throws Exception{
 		// TODO Auto-generated method stub
 		String url = req.getRequestURI();
-		
+		//第一步拿到用户的访问路径
 		String contextPath=req.getContextPath();
+		//去掉访问头例如http://ip:端口/
 		url=url.replaceAll(contextPath, "").replaceAll("/+", "/");
 		if(!handlerMapping.containsKey(url)) {
+			//没有找到的情况下肢解写404没找到
 			resp.getWriter().write("404");
 			return;
 		}
+		//如果有的情况下从handlerMapping中拿到所需要的方法
 		Method method=handlerMapping.get(url);
-		String beanName=method.getDeclaringClass().getSimpleName();
+		//从req中拿到key->value的对应关系
 		Map<String,String[]> params=req.getParameterMap();
+		//将方法的参数类型和参数进行一次整合
 		Class<?>[]paramsTypes=method.getParameterTypes();
-		for(int i=0;i<paramsTypes.length;i++) {
-			
-		}
+		Object[]paramValues=new Object[paramsTypes.length];
 		
-		method.invoke(IOC.get(beanName), new Object[] {req,resp,params.get("name")[0]});
+		
+		for(int i=0;i<paramsTypes.length;i++) {
+			Class paramsType=paramsTypes[i];
+			//如果是HttpServletRequest或HttpServletResponse者类（该类有web容器自动生成）直接赋值
+			if(paramsType==HttpServletRequest.class) {
+				paramValues[i]=req;
+				continue;
+			}else if(paramsType==HttpServletResponse.class) {
+				paramValues[i]=resp;
+				continue;
+			}//如果类型是String类型的话这就如同http://IP:端口/aaa/bbb?name=aaa这种访问路径
+			else if(paramsType==String.class) {
+				//在本情况先首先获取这个方法的参数的注解
+				Annotation[][] pa=method.getParameterAnnotations();
+				for(int j=0;j<pa.length;j++) {
+					for(Annotation a:pa[i]) {
+						if(a instanceof MyRequestParam) {
+							//从req中获取对应的key值
+							//该key值存在一对多的关系
+							String paramName=((MyRequestParam)a).value();
+							if(params.containsKey(paramName)) {
+								for(Map.Entry<String, String[]>param:params.entrySet()) {
+									//此处以数组的形式整理
+									String value=Arrays.toString(param.getValue()).replaceAll("\\[\\]", "").replaceAll("\\s", "");
+									paramValues[i]=value;
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		String beanName=method.getDeclaringClass().getSimpleName();
+		
+		method.invoke(IOC.get(beanName), paramValues);
+		
+	}
+	private Object convert(Class<?>type,String value) {
+		
+		if(Integer.class==type) {
+			return Integer.valueOf(value);
+		}
+		//这里应该使用策略模式
+		return value;
 		
 	}
 
