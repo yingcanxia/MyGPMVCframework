@@ -40,6 +40,7 @@ public class MyDispatchServlet extends HttpServlet{
 	//为什么不能使用map.shiyong map的话key值只能是url
 	//handler本身功能就是对应url和method
 	//存在荣誉，单一职责，最少知道原则
+	//从性能上讲交给map便利不如直接就是list
 	private List<HandlerMapping>handlerMappings=new ArrayList<HandlerMapping>();
 
 	@Override
@@ -73,7 +74,12 @@ public class MyDispatchServlet extends HttpServlet{
 			resp.getWriter().write("404");
 			return;
 		}
-		//如果有的情况下从handlerMapping中拿到所需要的方法
+		handlerMapping.method.getParameterTypes();
+		
+		
+		
+		
+		/*//如果有的情况下从handlerMapping中拿到所需要的方法
 		Method method=getHandler(req).getMethod();
 		//从req中拿到key->value的对应关系
 		Map<String,String[]> params=req.getParameterMap();
@@ -117,8 +123,8 @@ public class MyDispatchServlet extends HttpServlet{
 			}
 		}
 		String beanName=method.getDeclaringClass().getSimpleName();
-		
 		method.invoke(IOC.get(beanName), paramValues);
+		*/
 		
 	}
 	private HandlerMapping getHandler(HttpServletRequest req) {
@@ -335,6 +341,7 @@ public class MyDispatchServlet extends HttpServlet{
 		private String url;
 		private Method method;
 		private Object controller;
+		private Class<?>[] paramTypes;
 		//还可以保存形参列表
 		private Map<String,Integer>paramIndexMapping;
 		public HandlerMapping(String url, Method method, Object controller) {
@@ -342,7 +349,8 @@ public class MyDispatchServlet extends HttpServlet{
 			this.url = url;
 			this.method = method;
 			this.controller = controller;
-			paramIndexMapping=new HashMap<>();
+			paramTypes=method.getParameterTypes();
+			paramIndexMapping=new HashMap<String,Integer>();
 			putParamIndexMapping(method);
 		}
 		private void putParamIndexMapping(Method method) {
@@ -390,9 +398,12 @@ public class MyDispatchServlet extends HttpServlet{
 		public void setParamIndexMapping(Map<String, Integer> paramIndexMapping) {
 			this.paramIndexMapping = paramIndexMapping;
 		}
-		
-		
-		
-		
+		public Class<?>[] getParamTypes() {
+			return paramTypes;
+		}
+		public void setParamTypes(Class<?>[] paramTypes) {
+			this.paramTypes = paramTypes;
+		}
 	}
+		
 }
