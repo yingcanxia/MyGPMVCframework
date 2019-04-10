@@ -1,4 +1,4 @@
-package cn.shadow.mvcframework.v1.servlet;
+package cn.shadow.mvcframework.v3.servlet;
 
 import java.io.File;
 import java.io.IOException;
@@ -27,8 +27,6 @@ import cn.shadow.mvcframework.v1.annotation.MyRequestMapping;
 import cn.shadow.mvcframework.v1.annotation.MyRequestParam;
 import cn.shadow.mvcframework.v1.annotation.MyService;
 
-//本类是属于2.0版本程序存在较多问题例如handlerMapping原handler Mapping中的对应类的handlerMapping使用的是list形式
-//本类中handlerMapping并不只是url和method的对应关系，而且尽量不要在线程中调用反射，这样开销会很大
 public class MyDispatchServlet extends HttpServlet{
 	
 	private Properties contestConfig=new Properties(); 
@@ -37,7 +35,10 @@ public class MyDispatchServlet extends HttpServlet{
 	
 	private Map<String,Object>IOC=new HashMap<String,Object>();
 	
-	private Map<String,Method>handlerMapping=new HashMap<String,Method>();
+	//private Map<String,Method>handlerMapping=new HashMap<String,Method>();
+	
+	private List<HandlerMapping>handlerMapping=new ArrayList<HandlerMapping>();
+
 	@Override
 	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 		// TODO Auto-generated method stub
@@ -305,4 +306,11 @@ public class MyDispatchServlet extends HttpServlet{
 		
 	}
 	
+	public class HandlerMapping{
+		private String url;
+		private String method;
+		private Object controller;
+		
+		
+	}
 }
