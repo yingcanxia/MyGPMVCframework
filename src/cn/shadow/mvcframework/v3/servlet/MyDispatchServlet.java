@@ -37,7 +37,7 @@ public class MyDispatchServlet extends HttpServlet{
 	
 	//private Map<String,Method>handlerMapping=new HashMap<String,Method>();
 	
-	private List<HandlerMapping>handlerMapping=new ArrayList<HandlerMapping>();
+	private List<HandlerMapping>handlerMappings=new ArrayList<HandlerMapping>();
 
 	@Override
 	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
@@ -63,13 +63,15 @@ public class MyDispatchServlet extends HttpServlet{
 		String contextPath=req.getContextPath();
 		//去掉访问头例如http://ip:端口/
 		url=url.replaceAll(contextPath, "").replaceAll("/+", "/");
-		if(!handlerMapping.containsKey(url)) {
+		HandlerMapping handlerMapping= getHandler(req);
+		if(handlerMapping==null) {
+		/*if(!handlerMappings.containsKey(url)) {*/
 			//没有找到的情况下肢解写404没找到
 			resp.getWriter().write("404");
 			return;
 		}
 		//如果有的情况下从handlerMapping中拿到所需要的方法
-		Method method=handlerMapping.get(url);
+		Method method=handlerMappings.get(url);
 		//从req中拿到key->value的对应关系
 		Map<String,String[]> params=req.getParameterMap();
 		//将方法的参数类型和参数进行一次整合
@@ -116,6 +118,24 @@ public class MyDispatchServlet extends HttpServlet{
 		method.invoke(IOC.get(beanName), paramValues);
 		
 	}
+	private HandlerMapping getHandler(HttpServletRequest req) {
+		// TODO Auto-generated method stub
+		if(handlerMappings.isEmpty()) {
+			return null;
+		}
+		String url = req.getRequestURI();
+		//第一步拿到用户的访问路径
+		String contextPath=req.getContextPath();
+		//去掉访问头例如http://ip:端口/
+		url=url.replaceAll(contextPath, "").replaceAll("/+", "/");
+		for(HandlerMapping mapping:this.handlerMappings) {
+			if(mapping.getUrl().equals(url)) {
+				return mapping;
+			}
+		}
+		return null;
+	}
+
 	private Object convert(Class<?>type,String value) {
 		
 		if(Integer.class==type) {
@@ -167,7 +187,8 @@ public class MyDispatchServlet extends HttpServlet{
 				}
 				MyRequestMapping requestMapping=method.getAnnotation(MyRequestMapping.class);
 				String url=("/"+baseUrl+"/"+requestMapping.value()).replaceAll("/+", "/");
-				handlerMapping.put(url, method);
+				this.handlerMappings.add(new HandlerMapping(url, method,entry.getValue()));
+				//handlerMappings.put(url, method);
 				System.out.println(url+","+method.getName());
 			}
 			//在声明一个容器
@@ -308,8 +329,65 @@ public class MyDispatchServlet extends HttpServlet{
 	
 	public class HandlerMapping{
 		private String url;
-		private String method;
+		private Method method;
 		private Object controller;
+		//还可以保存形参列表
+		private Map<String,Integer>paramIndexMapping;
+		public HandlerMapping(String url, Method method, Object controller) {
+			super();
+			this.url = url;
+			this.method = method;
+			this.controller = controller;
+			paramIndexMapping=new HashMap<>();
+			putParamIndexMapping(method);
+		}
+		private void putParamIndexMapping(Method method) {
+			// TODO Auto-generated method stub
+			Annotation[][]pa=method.getParameterAnnotations();
+			for(int i=0;i<pa.length;i++) {
+				for(Annotation a:pa[i]) {
+					if(a instanceof MyRequestParam) {
+						String paramName=((MyRequestParam)a).value();
+						if(!"".equals(paramName.trim())) {
+							paramIndexMapping.put(paramName, i);
+						}
+						
+					}
+				}
+			}
+			Class<?>[] paramTypes=method.getParameterTypes();
+			for(int i=0;i<paramTypes.length;i++) {
+				Class<?> type=paramTypes[i];
+				if(type==HttpServletRequest.class||type==HttpServletResponse.class) {
+				}
+			}
+		}
+		public String getUrl() {
+			return url;
+		}
+		public void setUrl(String url) {
+			this.url = url;
+		}
+		public Method getMethod() {
+			return method;
+		}
+		public void setMethod(Method method) {
+			this.method = method;
+		}
+		public Object getController() {
+			return controller;
+		}
+		public void setController(Object controller) {
+			this.controller = controller;
+		}
+		public Map<String, Integer> getParamIndexMapping() {
+			return paramIndexMapping;
+		}
+		public void setParamIndexMapping(Map<String, Integer> paramIndexMapping) {
+			this.paramIndexMapping = paramIndexMapping;
+		}
+		
+		
 		
 		
 	}
