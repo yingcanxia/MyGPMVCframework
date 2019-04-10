@@ -37,6 +37,9 @@ public class MyDispatchServlet extends HttpServlet{
 	
 	//private Map<String,Method>handlerMapping=new HashMap<String,Method>();
 	
+	//为什么不能使用map.shiyong map的话key值只能是url
+	//handler本身功能就是对应url和method
+	//存在荣誉，单一职责，最少知道原则
 	private List<HandlerMapping>handlerMappings=new ArrayList<HandlerMapping>();
 
 	@Override
@@ -71,7 +74,7 @@ public class MyDispatchServlet extends HttpServlet{
 			return;
 		}
 		//如果有的情况下从handlerMapping中拿到所需要的方法
-		Method method=handlerMappings.get(url);
+		Method method=getHandler(req).getMethod();
 		//从req中拿到key->value的对应关系
 		Map<String,String[]> params=req.getParameterMap();
 		//将方法的参数类型和参数进行一次整合
@@ -328,6 +331,7 @@ public class MyDispatchServlet extends HttpServlet{
 	}
 	
 	public class HandlerMapping{
+		//必须将俩放到mapping中
 		private String url;
 		private Method method;
 		private Object controller;
