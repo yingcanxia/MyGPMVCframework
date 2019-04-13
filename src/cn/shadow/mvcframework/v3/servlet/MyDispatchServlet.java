@@ -14,6 +14,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
@@ -22,6 +24,8 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.omg.CORBA.OBJ_ADAPTER;
+
+import com.sun.org.apache.xerces.internal.impl.xpath.regex.Match;
 
 import cn.shadow.mvcframework.v1.annotation.MyAutowired;
 import cn.shadow.mvcframework.v1.annotation.MyController;
@@ -163,9 +167,10 @@ public class MyDispatchServlet extends HttpServlet{
 		//去掉访问头例如http://ip:端口/
 		url=url.replaceAll(contextPath, "").replaceAll("/+", "/");
 		for(HandlerMapping mapping:this.handlerMappings) {
-			if(mapping.getUrl().equals(url)) {
-				return mapping;
-			}
+			Matcher match=mapping.getUrl().matcher(url);
+			if(!match.matches()) {continue;}
+			return mapping;
+			
 		}
 		return null;
 	}
@@ -221,7 +226,9 @@ public class MyDispatchServlet extends HttpServlet{
 				}
 				MyRequestMapping requestMapping=method.getAnnotation(MyRequestMapping.class);
 				String url=("/"+baseUrl+"/"+requestMapping.value()).replaceAll("/+", "/");
-				this.handlerMappings.add(new HandlerMapping(url, method,entry.getValue()));
+				Pattern pattern=Pattern.compile(url);
+				
+				this.handlerMappings.add(new HandlerMapping(pattern, method,entry.getValue()));
 				//handlerMappings.put(url, method);
 				System.out.println(url+","+method.getName());
 			}
@@ -363,13 +370,13 @@ public class MyDispatchServlet extends HttpServlet{
 	
 	public class HandlerMapping{
 		//必须将俩放到mapping中
-		private String url;
+		private Pattern url;
 		private Method method;
 		private Object controller;
 		private Class<?>[] paramTypes;
 		//还可以保存形参列表
 		public Map<String,Integer>paramIndexMapping;
-		public HandlerMapping(String url, Method method, Object controller) {
+		public HandlerMapping(Pattern url, Method method, Object controller) {
 			super();
 			this.url = url;
 			this.method = method;
@@ -399,10 +406,11 @@ public class MyDispatchServlet extends HttpServlet{
 				}
 			}
 		}
-		public String getUrl() {
+		
+		public Pattern getUrl() {
 			return url;
 		}
-		public void setUrl(String url) {
+		public void setUrl(Pattern url) {
 			this.url = url;
 		}
 		public Method getMethod() {
