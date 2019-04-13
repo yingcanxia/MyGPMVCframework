@@ -21,6 +21,8 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.omg.CORBA.OBJ_ADAPTER;
+
 import cn.shadow.mvcframework.v1.annotation.MyAutowired;
 import cn.shadow.mvcframework.v1.annotation.MyController;
 import cn.shadow.mvcframework.v1.annotation.MyRequestMapping;
@@ -74,11 +76,34 @@ public class MyDispatchServlet extends HttpServlet{
 			resp.getWriter().write("404");
 			return;
 		}
-		handlerMapping.method.getParameterTypes();
-		
-		
-		
-		
+		Class<?>[]paramTypes=handlerMapping.method.getParameterTypes();
+		Object[] paramValues=new Object[paramTypes.length];		
+		Map<String,String[]>params=req.getParameterMap();
+		for (Map.Entry<String, String[]> parm : params.entrySet()) {
+			String value =Arrays.toString(parm.getValue()).replaceAll("\\[|\\]", "").replaceAll("\\s", ",");
+			if(!handlerMapping.paramIndexMapping.containsKey(parm.getKey())) {
+				continue;
+			}
+			int index=handlerMapping.paramIndexMapping.get(parm.getKey());
+			paramValues[index]=convert(paramTypes[index], value);
+			
+		}
+		//handlerMapping.method.invoke(handlerMapping.controller, paramValues);
+		if(handlerMapping.paramIndexMapping.containsKey(HttpServletRequest.class.getName())) {
+			
+			int reqIndex=handlerMapping.paramIndexMapping.get(HttpServletRequest.class.getName());
+			paramValues[reqIndex]=req; 
+		}
+		if(handlerMapping.paramIndexMapping.containsKey(HttpServletResponse.class.getName())) {
+			
+			int respIndex=handlerMapping.paramIndexMapping.get(HttpServletResponse.class.getName());
+			paramValues[respIndex]=resp; 
+		}
+		Object returnValue=handlerMapping.method.invoke(handlerMapping.controller, paramValues);
+		if(returnValue==null||returnValue instanceof Void) {
+			return;
+		}
+		resp.getWriter().write(returnValue.toString());
 		/*//如果有的情况下从handlerMapping中拿到所需要的方法
 		Method method=getHandler(req).getMethod();
 		//从req中拿到key->value的对应关系
@@ -343,7 +368,7 @@ public class MyDispatchServlet extends HttpServlet{
 		private Object controller;
 		private Class<?>[] paramTypes;
 		//还可以保存形参列表
-		private Map<String,Integer>paramIndexMapping;
+		public Map<String,Integer>paramIndexMapping;
 		public HandlerMapping(String url, Method method, Object controller) {
 			super();
 			this.url = url;
