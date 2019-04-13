@@ -52,6 +52,7 @@ public class MyDispatchServlet extends HttpServlet{
 	@Override
 	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 		// TODO Auto-generated method stub
+		//所有的请求都转到dopost方法去执行
 		doPost(req, resp);
 	}
 
@@ -59,6 +60,7 @@ public class MyDispatchServlet extends HttpServlet{
 	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 		// TODO Auto-generated method stub
 		try {
+			//全部交给doDispatch来执行
 			doDispatch(req, resp);
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
@@ -68,6 +70,7 @@ public class MyDispatchServlet extends HttpServlet{
 
 	private void doDispatch(HttpServletRequest req, HttpServletResponse resp)throws Exception{
 		// TODO Auto-generated method stub
+		//request中提取用户的访问路径
 		String url = req.getRequestURI();
 		//第一步拿到用户的访问路径
 		String contextPath=req.getContextPath();
@@ -80,33 +83,43 @@ public class MyDispatchServlet extends HttpServlet{
 			resp.getWriter().write("404");
 			return;
 		}
+		
+		//参数类型列表
 		Class<?>[]paramTypes=handlerMapping.method.getParameterTypes();
-		Object[] paramValues=new Object[paramTypes.length];		
+		//对象列表
+		Object[] paramValues=new Object[paramTypes.length];
+		//http协议是基于字符串的url？para=aaa,键值对其中key值会有多个值所以这里是数组
 		Map<String,String[]>params=req.getParameterMap();
 		for (Map.Entry<String, String[]> parm : params.entrySet()) {
+			//将数组化解
 			String value =Arrays.toString(parm.getValue()).replaceAll("\\[|\\]", "").replaceAll("\\s", ",");
 			if(!handlerMapping.paramIndexMapping.containsKey(parm.getKey())) {
+				//如果没有对应的key值这跳出
 				continue;
 			}
+			//依照方法的参数类型列表将值春芳在列表
 			int index=handlerMapping.paramIndexMapping.get(parm.getKey());
 			paramValues[index]=convert(paramTypes[index], value);
-			
 		}
 		//handlerMapping.method.invoke(handlerMapping.controller, paramValues);
 		if(handlerMapping.paramIndexMapping.containsKey(HttpServletRequest.class.getName())) {
-			
+			//存入request
 			int reqIndex=handlerMapping.paramIndexMapping.get(HttpServletRequest.class.getName());
 			paramValues[reqIndex]=req; 
 		}
 		if(handlerMapping.paramIndexMapping.containsKey(HttpServletResponse.class.getName())) {
-			
+			//存入response
 			int respIndex=handlerMapping.paramIndexMapping.get(HttpServletResponse.class.getName());
 			paramValues[respIndex]=resp; 
 		}
+		//调用找到的方法去执行
 		Object returnValue=handlerMapping.method.invoke(handlerMapping.controller, paramValues);
+		//当返回值是空或者方法是void的时候
 		if(returnValue==null||returnValue instanceof Void) {
 			return;
+			//正常返回
 		}
+		//当不是的时候让response去写出结果
 		resp.getWriter().write(returnValue.toString());
 		/*//如果有的情况下从handlerMapping中拿到所需要的方法
 		Method method=getHandler(req).getMethod();
@@ -158,6 +171,7 @@ public class MyDispatchServlet extends HttpServlet{
 	}
 	private HandlerMapping getHandler(HttpServletRequest req) {
 		// TODO Auto-generated method stub
+		//当handlerMapping为空是返回
 		if(handlerMappings.isEmpty()) {
 			return null;
 		}
@@ -167,6 +181,7 @@ public class MyDispatchServlet extends HttpServlet{
 		//去掉访问头例如http://ip:端口/
 		url=url.replaceAll(contextPath, "").replaceAll("/+", "/");
 		for(HandlerMapping mapping:this.handlerMappings) {
+			//遍历list
 			Matcher match=mapping.getUrl().matcher(url);
 			if(!match.matches()) {continue;}
 			return mapping;
@@ -176,7 +191,7 @@ public class MyDispatchServlet extends HttpServlet{
 	}
 
 	private Object convert(Class<?>type,String value) {
-		
+		//类型转化
 		if(Integer.class==type) {
 			return Integer.valueOf(value);
 		}else if(String.class==type) {
@@ -191,14 +206,16 @@ public class MyDispatchServlet extends HttpServlet{
 	@Override
 	public void init(ServletConfig config) throws ServletException {
 		// TODO Auto-generated method stub
+		//本类的的初始化函数
+		//加载配置文件括号里的是个key值与web.xml有关
 		doLoadConfig(config.getInitParameter("contextConfigLocation"));
-		
+		//扫描配置文件配置的包
 		doScanner(contestConfig.getProperty("scanPackage"));
-		
+		//ioc控制反转将扫描到的bean类加载到ioc容器之中
 		doInstance();
-		
+		//进行依赖注入
 		doAutowired();
-		
+		//加载处理器使功能能够正常使用
 		initHandlerMapping();
 		
 		System.out.println("我的mvc框架已经启动");
@@ -220,6 +237,7 @@ public class MyDispatchServlet extends HttpServlet{
 				MyRequestMapping requestMapping=clazz.getAnnotation(MyRequestMapping.class);
 				baseUrl=requestMapping.value()[0];
 			}
+			//保存卸载方法上的url
 			for (Method method : clazz.getMethods()) {
 				if(!method.isAnnotationPresent(MyRequestMapping.class)) {
 					continue;
@@ -240,6 +258,7 @@ public class MyDispatchServlet extends HttpServlet{
 
 	private void doAutowired() {
 		// TODO Auto-generated method stub
+		//将service自动注入
 		if(IOC.isEmpty()) {
 			return;
 		}
@@ -250,6 +269,7 @@ public class MyDispatchServlet extends HttpServlet{
 				if(!field.isAnnotationPresent(MyAutowired.class)) {
 					return;
 				}
+				//如果该类是被MyAutowired所注释
 				MyAutowired autowired=field.getAnnotation(MyAutowired.class);
 				String beanName=autowired.value().trim();
 				//用户没有自定义名字的情况下
@@ -279,18 +299,23 @@ public class MyDispatchServlet extends HttpServlet{
 
 	private void doInstance() {
 		// TODO Auto-generated method stub
+		//
 		if(classNames.isEmpty()) {
 			return;
 		}
 		try {
 			for (String className : classNames) {
 				Class<?>clazz=Class.forName(className);
+				//判断是否是以MyController这个类为注释的
 				if(clazz.isAnnotationPresent(MyController.class)) {
 					Object instance=clazz.newInstance();
 					//key值可以使用classname首字母小写
 					String beanName=clazz.getSimpleName();
+					//如果是则用将其放入IOC容器之中
 					IOC.put(beanName, instance);
-				}else if(clazz.isAnnotationPresent(MyService.class)){
+				}
+				//检查类名是否够使用MyService作为注释
+				else if(clazz.isAnnotationPresent(MyService.class)){
 					//默认类名
 					String beanName=clazz.getSimpleName();//默认首字母小写
 					
@@ -325,6 +350,8 @@ public class MyDispatchServlet extends HttpServlet{
 
 	private void doScanner(String scanPackage) {
 		// TODO Auto-generated method stub
+		
+		//获得配置文件中的键值对
 		URL url=this.getClass().getClassLoader().getResource("/"+scanPackage.replaceAll("\\.", "/"));
 		File classPath=new File(url.getFile());
 		for (File file : classPath.listFiles()) {
@@ -333,24 +360,19 @@ public class MyDispatchServlet extends HttpServlet{
 			}else {
 				if(!file.getName().endsWith(".class")) {continue;}
 				String className=scanPackage+"."+file.getName().replace(".class", "");	
+				//整理类名
 				classNames.add(className);
 			}
-			
-			
-			
-			
-			
 		}
-		
-		
-		
 	}
 
 	private void doLoadConfig(String contextConfigLocation) {
 		// TODO Auto-generated method stub
+		//加载配置文件
 		InputStream is=null;
 		is=this.getClass().getClassLoader().getResourceAsStream(contextConfigLocation);
 		try {
+			//其中意思有变量的形式保存加载文件
 			contestConfig.load(is);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
