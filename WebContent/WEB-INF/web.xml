@@ -4,7 +4,7 @@
   
   <servlet>
   	<servlet-name>MyMVC</servlet-name>
-  	<servlet-class>cn.shadow.mvcframework.v1.servlet.MyDispatchServlet</servlet-class>
+  	<servlet-class>cn.shadow.mvcframework.v3.servlet.MyDispatchServlet</servlet-class>
   	<init-param>
   		<param-name>contextConfigLocation</param-name>
   		<param-value>classpath:conf/application.properties</param-value>
